@@ -293,4 +293,4 @@ Le site est alors en ligne à l'adresse `https://<votre-pseudo>.github.io/predic
 
 ---
 
-**Auteure :** Maram Bougossa — ESGITECH
+**Auteure :** * **Maram Bougossa** - [GitHub](https://github.com/YuuMii05)
