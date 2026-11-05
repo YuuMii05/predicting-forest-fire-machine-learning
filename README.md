@@ -1,3 +1,5 @@
+<p align="right"><strong>Français</strong> | <a href="README.en.md">English</a></p>
+
 # Prédire les feux de forêt en Tunisie — comparaison de modèles de Machine Learning
 
 <p align="center">
