@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prédire les feux de forêt</title>
+<meta name="description" content="Comparaison de six familles d'algorithmes de Machine Learning pour prédire les jours de feu dans les forêts tunisiennes, à partir de la météo et des détections satellitaires NASA (2013-2025).">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --pine: #1d3b2f;        /* Aleppo pine — headings, ink */
+  --ink: #232821;
+  --ink-2: #545a50;
+  --ash: #eef0eb;         /* page: ash-grey, cool */
+  --paper: #f8f9f6;       /* raised surfaces */
+  --rule: #d5d9d0;
+  --ember: #e2582a;       /* fire day */
+  --ember-soft: #f6c7b3;
+  --calm: #2a78d6;        /* no fire / moisture */
+  --calm-soft: #cfe0f5;
+  --sel: #1d3b2f;
+  --display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --body: "Source Serif 4", Georgia, serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --pine: #b9d3c4; --ink: #e6e9e3; --ink-2: #a9afa4; --ash: #151a16; --paper: #1c221d;
+    --rule: #333b34; --ember: #f0703f; --ember-soft: #5a2c1c; --calm: #4f93e6; --calm-soft: #1d3350;
+    --sel: #b9d3c4; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --pine: #b9d3c4; --ink: #e6e9e3; --ink-2: #a9afa4; --ash: #151a16; --paper: #1c221d;
+  --rule: #333b34; --ember: #f0703f; --ember-soft: #5a2c1c; --calm: #4f93e6; --calm-soft: #1d3350;
+  --sel: #b9d3c4; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--ash); color: var(--ink);
+  font: 400 1.0625rem/1.65 var(--body);
+  font-optical-sizing: auto;
+}
+img { max-width: 100%; height: auto; display: block; }
+a { color: var(--pine); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 3px solid var(--ember); outline-offset: 3px; border-radius: 2px; }
+
+.wrap { width: min(100% - 32px, 760px); margin-inline: auto; }
+.wide { width: min(100% - 32px, 1080px); margin-inline: auto; }
+
+h1, h2, h3 { font-family: var(--display); color: var(--pine); margin: 0; }
+h1 {
+  font-weight: 850; font-stretch: 72%; line-height: .92; letter-spacing: -.01em;
+  font-size: clamp(2.9rem, 9.5vw, 6.6rem);
+}
+h2 {
+  font-weight: 760; font-stretch: 80%; line-height: 1.02;
+  font-size: clamp(1.9rem, 4.6vw, 2.9rem); margin-bottom: .55em;
+}
+h3 { font-weight: 700; font-stretch: 92%; font-size: 1.22rem; line-height: 1.2; margin: 1.8em 0 .4em; }
+p { margin: 0 0 1em; }
+.lede { font-size: 1.28rem; line-height: 1.5; color: var(--ink); max-width: 34em; }
+.small { font-size: .9rem; color: var(--ink-2); }
+
+/* ---------- hero ---------- */
+header.hero { padding: clamp(40px, 8vw, 88px) 0 28px; }
+.hero .kicker { font-family: var(--display); font-stretch: 100%; font-weight: 600; color: var(--ink-2); margin-bottom: 18px; font-size: .98rem; }
+.hero h1 { max-width: 11ch; }
+.hero .lede { margin-top: 26px; }
+
+.calendar { margin-top: 40px; }
+.cal-row { display: grid; grid-template-columns: 150px 1fr; align-items: center; gap: 14px; margin-bottom: 6px; }
+.cal-row .lab { font-family: var(--display); font-weight: 650; font-stretch: 88%; color: var(--pine); line-height: 1.1; }
+.cal-row .lab span { display: block; font-weight: 400; font-stretch: 100%; font-size: .82rem; color: var(--ink-2); }
+.days { display: grid; grid-template-columns: repeat(122, 1fr); gap: 2px; height: 46px; }
+.day { border: 0; padding: 0; margin: 0; background: var(--calm-soft); border-radius: 2px; cursor: pointer; }
+.day.f { background: var(--ember); }
+.day:hover, .day:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.cal-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 20px; margin-bottom: 16px; }
+.cal-title { font-family: var(--display); font-weight: 700; font-stretch: 85%; font-size: 1.5rem; color: var(--pine); }
+.cal-title b { font-weight: 850; }
+.years { display: flex; flex-wrap: wrap; gap: 4px; }
+.years button {
+  font: 600 .85rem/1 var(--display); border: 1px solid var(--rule); background: var(--paper); color: var(--ink-2);
+  padding: 7px 9px; border-radius: 4px; cursor: pointer; font-variant-numeric: tabular-nums;
+}
+.years button[aria-pressed="true"] { background: var(--pine); border-color: var(--pine); color: var(--ash); }
+.days { height: 30px !important; }
+.months { display: grid; grid-template-columns: 150px 30fr 31fr 31fr 30fr; gap: 0 14px; font-size: .8rem; color: var(--ink-2); font-family: var(--display); }
+.months span:not(:first-child) { border-left: 1px solid var(--rule); padding-left: 6px; }
+.cal-foot { display: flex; flex-wrap: wrap; gap: 6px 22px; align-items: center; margin-top: 14px; font-size: .92rem; color: var(--ink-2); }
+.key { display: inline-flex; align-items: center; gap: 8px; }
+.key i { width: 14px; height: 14px; border-radius: 2px; display: inline-block; background: var(--calm-soft); }
+.key i.f { background: var(--ember); }
+.readout {
+  margin-top: 14px; min-height: 3.2em; padding: 12px 16px; background: var(--paper);
+  border-left: 4px solid var(--rule); font-size: .95rem;
+}
+.readout.f { border-left-color: var(--ember); }
+.readout.n { border-left-color: var(--calm); }
+.readout b { font-family: var(--display); font-weight: 700; }
+@media (max-width: 640px) {
+  .cal-row { grid-template-columns: 1fr; gap: 4px; }
+  .months { grid-template-columns: 30fr 31fr 31fr 30fr; }
+  .months span:first-child { display: none; }
+  .months span:nth-child(2) { border-left: 0; padding-left: 0; }
+  .days { height: 24px !important; gap: 1px; }
+}
+
+/* ---------- sections ---------- */
+section { padding: clamp(48px, 7vw, 84px) 0 0; }
+.answer { display: grid; gap: 0; margin-top: 8px; border-top: 2px solid var(--pine); }
+.answer > div { display: grid; grid-template-columns: minmax(150px, 220px) 1fr; gap: 6px 28px; padding: 20px 0; border-bottom: 1px solid var(--rule); }
+.answer .big { font-family: var(--display); font-weight: 800; font-stretch: 75%; font-size: 2.6rem; line-height: 1; color: var(--pine); font-variant-numeric: tabular-nums; }
+.answer .big small { display: block; font-size: .9rem; font-weight: 500; font-stretch: 100%; color: var(--ink-2); margin-top: 6px; line-height: 1.3; }
+.answer p { margin: 0; }
+@media (max-width: 640px) { .answer > div { grid-template-columns: 1fr; } }
+
+figure { margin: 28px 0; }
+figure.fig { background: #fff; padding: clamp(10px, 2vw, 20px); border-radius: 6px; }
+:root[data-theme="dark"] figure.fig { background: #f3f4f1; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) figure.fig { background: #f3f4f1; } }
+figcaption { font-size: .9rem; color: var(--ink-2); margin-top: 10px; max-width: 60em; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 760px) { .pair { grid-template-columns: 1fr; } }
+
+/* protocol: a real sequence */
+ol.steps { list-style: none; counter-reset: s; padding: 0; margin: 20px 0 0; }
+ol.steps li { counter-increment: s; display: grid; grid-template-columns: 44px 1fr; gap: 16px; padding: 14px 0; border-top: 1px solid var(--rule); }
+ol.steps li::before {
+  content: counter(s); font-family: var(--display); font-weight: 800; font-size: 1.6rem; line-height: 1; color: var(--ember);
+}
+ol.steps b { font-family: var(--display); font-weight: 700; color: var(--pine); }
+
+.nest { margin: 24px 0 8px; border: 2px solid var(--pine); border-radius: 6px; padding: 16px 18px 18px; }
+.nest .inner { margin-top: 12px; border: 2px dashed var(--ember); border-radius: 5px; padding: 12px 16px; }
+.nest b { font-family: var(--display); font-weight: 700; color: var(--pine); }
+.nest .inner b { color: var(--ember); }
+
+/* scenario switch + results table */
+.switch { display: inline-flex; border: 2px solid var(--pine); border-radius: 999px; padding: 3px; margin: 8px 0 18px; flex-wrap: wrap; }
+.switch button {
+  font: 600 .98rem/1 var(--display); font-stretch: 92%; border: 0; background: transparent; color: var(--pine);
+  padding: 10px 18px; border-radius: 999px; cursor: pointer;
+}
+.switch button[aria-pressed="true"] { background: var(--pine); color: var(--ash); }
+.scenario-note { color: var(--ink-2); max-width: 44em; }
+
+table.res { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+table.res th, table.res td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+table.res th { font: 600 .85rem/1.2 var(--display); color: var(--ink-2); border-bottom: 2px solid var(--pine); }
+table.res td.model { font-family: var(--display); font-weight: 650; font-stretch: 92%; color: var(--pine); white-space: nowrap; }
+table.res td.model span { display: block; font-weight: 400; font-stretch: 100%; font-size: .8rem; color: var(--ink-2); }
+table.res td.num { white-space: nowrap; }
+table.res tr.ref td { color: var(--ink-2); }
+table.res tr.ref td.model { color: var(--ink-2); font-style: italic; }
+.bar { position: relative; height: 12px; background: var(--rule); border-radius: 2px; min-width: 120px; }
+.bar i { position: absolute; inset: 0 auto 0 0; background: var(--pine); border-radius: 2px; }
+.bar s { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ember); text-decoration: none; }
+.tag { white-space: nowrap; display: inline-block; font: 600 .75rem/1 var(--display); padding: 4px 7px; border-radius: 3px; background: var(--calm-soft); color: var(--ink); }
+.tag.sig { background: var(--ember-soft); }
+.table-scroll { overflow-x: auto; }
+@media (max-width: 640px) {
+  .hide-sm { display: none; }
+  .bar { display: none; }
+  table.res td.model { white-space: normal; }
+  table.res th, table.res td { padding: 10px 6px; }
+}
+
+.verdict { border-top: 2px solid var(--pine); margin-top: 20px; }
+.verdict > div { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 22px 0; border-bottom: 1px solid var(--rule); }
+.verdict .if { font-size: 1.05rem; color: var(--ink-2); }
+.verdict .pick { font-family: var(--display); font-weight: 800; font-stretch: 78%; font-size: 2rem; line-height: 1.05; color: var(--pine); }
+@media (max-width: 640px) { .verdict > div { grid-template-columns: 1fr; gap: 6px; } }
+
+ul.plain { padding-left: 1.1em; }
+ul.plain li { margin-bottom: .5em; }
+
+footer { margin-top: 96px; padding: 36px 0 56px; border-top: 1px solid var(--rule); font-size: .92rem; color: var(--ink-2); }
+footer .links { display: flex; flex-wrap: wrap; gap: 10px 26px; margin-bottom: 14px; font-family: var(--display); font-weight: 600; }
+
+.theme-btn {
+  display: grid; place-items: center;
+  position: fixed; top: 14px; right: 14px; z-index: 5; border: 1px solid var(--rule); background: var(--paper); color: var(--ink);
+  width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 1.35rem; line-height: 1;
+}
+</style>
+</head>
+<body>
+<button class="theme-btn" id="theme" aria-label="Basculer le thème clair / sombre"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9 1.5a7.5 7.5 0 0 1 0 15z" fill="currentColor"/></svg></button>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="kicker">Un projet de Machine Learning de Maram Bougossa, ESGITECH</div>
+    <h1>Demain, la forêt va-t-elle brûler&nbsp;?</h1>
+    <p class="lede">Six familles d'algorithmes en compétition pour prédire les jours de feu dans les forêts du nord et du centre de la Tunisie, à partir de la météo et de 13 étés d'observations satellitaires.</p>
+  </div>
+  <div class="wide calendar" aria-label="Calendrier des feux détectés par zone">
+    <div class="cal-head">
+      <span class="cal-title">Été <b id="cal-year">2021</b></span>
+      <div class="years" id="years" role="group" aria-label="Choisir l'année"></div>
+    </div>
+    <div id="cal-rows"></div>
+    <div class="months"><span></span><span>juin</span><span>juillet</span><span>août</span><span>septembre</span></div>
+    <div class="cal-foot">
+      <span class="key"><i class="f"></i>feu détecté par satellite</span>
+      <span class="key"><i></i>aucun feu détecté</span>
+      <span>Chaque case est une journée réelle dans une zone. Survolez ou touchez-la pour voir sa météo.</span>
+    </div>
+    <div class="readout" id="readout" aria-live="polite">{{N_ROWS}} journées-zones en tout, dont {{N_FIRE}} avec un feu ({{FIRE_RATE}}). La question : la météo suffit-elle à distinguer les cases orange des bleues&nbsp;?</div>
+  </div>
+</header>
+
+<main>
+<section id="reponse">
+  <div class="wrap">
+    <h2>La réponse courte</h2>
+    <div class="answer">
+      <div><div class="big">×{{RATIO_BEST}}<small>précision d'alerte par rapport au hasard</small></div>
+        <p>Le meilleur modèle, <strong>{{BEST_ALL}}</strong>, classe les journées à risque avec une précision moyenne de {{AP_BEST}}, contre {{AP_RAND}} au hasard. C'est utile pour prioriser la surveillance, mais loin d'une prédiction sûre : <strong>la météo explique une partie du risque, pas l'étincelle.</strong></p></div>
+      <div><div class="big">{{AP_FWI}}<small>l'indice officiel FWI utilisé seul</small></div>
+        <p>L'indice canadien de danger d'incendie, utilisé seul, fait presque aussi bien que les modèles en validation croisée : l'écart n'est pas significatif. Les modèles prennent l'avantage sur les étés les plus récents, où l'indice seul ne fait guère mieux que le hasard.</p></div>
+      <div><div class="big">{{LEAK_KNN}}<small>de score « gratuit » pour le k-NN si l'on mélange les jours</small></div>
+        <p>Un grand feu dure plusieurs jours. Si l'on mélange les journées au hasard, le modèle reconnaît le feu de la veille au lieu de le prédire. Ici, chaque été de test est donc <strong>entièrement inconnu</strong> du modèle.</p></div>
+      <div><div class="big">{{ROC_TEMP}}<small>ROC-AUC du meilleur modèle sur 2022–2025</small></div>
+        <p>Entraînés sur 2013–2021, les modèles restent meilleurs que le hasard sur les quatre derniers étés, mais perdent en précision : le passé ne prédit qu'en partie l'avenir.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="donnees">
+  <div class="wrap">
+    <h2>Les données</h2>
+    <p>Aucun jeu de données tunisien prêt à l'emploi n'existe : je l'ai construit en croisant deux sources publiques, pour 7 zones forestières, chaque jour du 1<sup>er</sup> juin au 30 septembre, de 2013 à 2025.</p>
+    <ul class="plain">
+      <li><strong>Feux :</strong> détections du satellite VIIRS de la NASA (<a href="https://firms.modaps.eosdis.nasa.gov/">FIRMS</a>, résolution 375 m). Une journée-zone est « avec feu » si au moins un feu de végétation de confiance moyenne ou haute est détecté à moins de 25 km du centre de la zone.</li>
+      <li><strong>Météo :</strong> réanalyse ERA5 via <a href="https://open-meteo.com/">Open-Meteo</a> : température maximale, humidité minimale, vent maximal et pluie du jour.</li>
+      <li><strong>Indices FWI :</strong> les 6 indices du système canadien de danger d'incendie, que je calcule moi-même à partir de la météo (code vérifié sur l'exemple de référence de Van Wagner).</li>
+    </ul>
+    <p>Deux scénarios sont comparés : la <strong>météo seule</strong> (4 variables) et la <strong>météo + indices FWI</strong> (10 variables), qui résument la sécheresse accumulée des jours précédents.</p>
+  </div>
+  <div class="wide">
+    <figure class="fig"><img src="figures/01_feux_par_zone_et_annee.png" alt="Nombre de jours avec feu par zone et par été" loading="lazy">
+      <figcaption>Le Kef, Nefza, Sejnane, Aïn Draham et Chaambi brûlent le plus. Août est le mois le plus touché.</figcaption></figure>
+    <figure class="fig"><img src="figures/02_distributions_par_classe.png" alt="Distribution de chaque variable selon la classe" loading="lazy">
+      <figcaption>Les jours de feu sont plus chauds, plus secs et plus « en retard » dans la saison (codes de sécheresse DC et BUI élevés), mais les deux classes se chevauchent largement.</figcaption></figure>
+  </div>
+</section>
+
+<section id="protocole">
+  <div class="wrap">
+    <h2>Une compétition équitable</h2>
+    <p>Comparer des modèles n'a de sens que si chacun est évalué de la même façon et a la même chance d'être bien réglé.</p>
+    <ol class="steps">
+      <li><div><b>Construire et vérifier les données.</b> Fusion satellite + météo, calcul des indices FWI, contrôles automatiques (aucune valeur manquante, 7 zones × 13 étés × 122 jours).</div></li>
+      <li><div><b>Mettre chaque modèle dans un pipeline.</b> La mise à l'échelle est apprise sur les données d'entraînement uniquement : pas de fuite d'information.</div></li>
+      <li><div><b>Régler et évaluer par validation croisée imbriquée, groupée par année.</b> Les hyper-paramètres sont choisis sans jamais voir l'été de test.</div></li>
+      <li><div><b>Choisir la bonne métrique.</b> Seuls {{FIRE_RATE}} des jours ont un feu : répondre « jamais de feu » donne 90 % d'accuracy. On utilise la <em>précision moyenne</em> (aire sous la courbe précision-rappel), qui vaut {{AP_RAND}} au hasard.</div></li>
+      <li><div><b>Tester les écarts et la généralisation.</b> Test de Student corrigé, zone jamais vue, étés futurs, mise à l'échelle, variables utiles.</div></li>
+    </ol>
+    <div class="nest">
+      <b>Boucle externe — mesure la performance</b><br>
+      5 plis × 3 répétitions = 15 évaluations ; tous les jours d'un même été sont dans le même pli
+      <div class="inner"><b>Boucle interne — choisit les hyper-paramètres</b><br>
+        <code>GridSearchCV</code> à 3 plis groupés par année, uniquement sur la partie entraînement</div>
+    </div>
+  </div>
+</section>
+
+<section id="resultats">
+  <div class="wrap">
+    <h2>Les résultats</h2>
+    <div class="switch" role="group" aria-label="Choisir le scénario">
+      <button type="button" data-fs="meteo+FWI" aria-pressed="true">Météo + indices FWI</button>
+      <button type="button" data-fs="meteo seule" aria-pressed="false">Météo seule</button>
+    </div>
+    <p class="scenario-note" id="scenario-note"></p>
+    <div class="table-scroll">
+      <table class="res" id="res-table">
+        <thead><tr><th>Modèle</th><th>Précision moyenne (± écart-type)</th><th class="hide-sm">ROC-AUC</th><th class="hide-sm">Rappel</th><th>Écart avec le meilleur</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="small">15 plis de test groupés par année. Barre : précision moyenne sur une échelle de 0 à 0,3 ; trait orange : hasard. « Égalité » = écart non significatif (p &gt; 0,05, test corrigé). Le rappel est mesuré au seuil 0,5.</p>
+  </div>
+  <div class="wide">
+    <figure class="fig"><img id="res-fig" src="figures/05_comparaison_modeles.png" alt="Précision moyenne de chaque modèle sur les 15 plis de test" loading="lazy">
+      <figcaption>Chaque point est un pli de test (un groupe d'étés) ; le gros point et le trait montrent la moyenne ± l'écart-type. L'écart-type est grand : certains étés sont bien plus prévisibles que d'autres.</figcaption></figure>
+  </div>
+</section>
+
+<section id="pourquoi">
+  <div class="wrap">
+    <h2>Pourquoi c'est si difficile ?</h2>
+    <p>Un feu a besoin de deux choses : un <strong>combustible sec</strong>, que la météo mesure bien, et une <strong>étincelle</strong>, que la météo ne voit pas. En Tunisie, la grande majorité des départs de feu sont d'origine humaine (négligence, brûlages agricoles, actes volontaires). Un jour très chaud et sec sans étincelle ne brûle pas ; un jour moyen avec une étincelle peut brûler.</p>
+    <p>Les modèles apprennent donc surtout <strong>quand le terrain est prêt</strong> : fin de saison, sécheresse accumulée, chaleur. C'est exactement ce que montrent les variables les plus importantes.</p>
+  </div>
+  <div class="wide pair">
+    <figure class="fig"><img src="figures/11_importance_variables.png" alt="Importance des variables avec les indices FWI" loading="lazy">
+      <figcaption>Avec les indices : {{TOP_ALL}} en tête. Les indices très corrélés se partagent l'information, d'où les importances faibles des autres.</figcaption></figure>
+    <figure class="fig"><img src="figures/11b_importance_meteo_seule.png" alt="Importance des variables avec la météo seule" loading="lazy">
+      <figcaption>Avec la météo seule : {{TOP_W}} en tête.</figcaption></figure>
+  </div>
+</section>
+
+<section id="fuite">
+  <div class="wrap">
+    <h2>Le piège : mélanger les jours</h2>
+    <p>Avec une validation croisée classique, les jours sont mélangés au hasard. Or un grand feu dure plusieurs jours, et les codes de sécheresse changent à peine d'un jour à l'autre. Le lendemain d'un feu se retrouve dans le test, le feu lui-même dans l'entraînement : le modèle le <em>reconnaît</em> au lieu de le <em>prédire</em>. Le k-NN, qui cherche littéralement les jours les plus proches, en profite le plus.</p>
+  </div>
+  <div class="wide">
+    <figure class="fig"><img src="figures/09c_fuite_temporelle.png" alt="Scores avec plis mélangés et avec plis groupés par année" loading="lazy">
+      <figcaption>Avec des plis mélangés, le k-NN passerait du 4e au 1er rang. Le classement serait faux.</figcaption></figure>
+  </div>
+</section>
+
+<section id="echelle">
+  <div class="wrap">
+    <h2>La mise à l'échelle, ça compte ?</h2>
+    <p>Les variables vont de 0–10 mm (pluie) à plus de 1 000 (code de sécheresse DC). Chaque modèle a été entraîné sans mise à l'échelle, avec standardisation et avec Min-Max.</p>
+    <ul class="plain">
+      <li><strong>Arbres et ensembles : aucun effet.</strong> Ils coupent une variable à la fois : changer d'unité déplace le seuil, pas la décision.</li>
+      <li><strong>k-NN : {{KNN_SCALE}} avec la mise à l'échelle sur les 10 variables.</strong> Sans elle, DC et BUI (des centaines) écrasent la température et l'humidité (des dizaines) dans le calcul de distance.</li>
+      <li><strong>Régression logistique : léger gain. SVM : léger recul.</strong> La mise à l'échelle reste une bonne pratique, pas une garantie : son effet dépend du modèle et des données.</li>
+    </ul>
+  </div>
+  <div class="wide">
+    <figure class="fig"><img src="figures/07_effet_mise_a_echelle.png" alt="Score de chaque modèle selon la méthode de mise à l'échelle" loading="lazy"></figure>
+    <figure class="fig"><img src="figures/08_knn_choix_de_k.png" alt="Score du k-NN en fonction de k" loading="lazy">
+      <figcaption>Choix de k par validation croisée. Il faut beaucoup de voisins (plusieurs dizaines) : le signal est faible et bruité, il faut moyenner.</figcaption></figure>
+  </div>
+</section>
+
+<section id="generalisation">
+  <div class="wrap">
+    <h2>Et ailleurs, et plus tard ?</h2>
+    <h3>Une zone jamais vue</h3>
+    <p>Chaque modèle est entraîné sur 6 zones et testé sur la 7<sup>e</sup>. Les modèles appris transfèrent assez bien d'une forêt du nord-ouest à l'autre, mais moins bien vers le Cap Bon et Chaambi, aux climats différents. L'indice FWI seul est très inégal d'une zone à l'autre.</p>
+  </div>
+  <div class="wide">
+    <figure class="fig"><img src="figures/09_generalisation_zone_inconnue.png" alt="ROC-AUC par modèle et par zone testée" loading="lazy"></figure>
+  </div>
+  <div class="wrap">
+    <h3>Des étés futurs</h3>
+    <p>Entraînés sur 2013–2021 puis testés sur 2022–2025, tous les modèles restent au-dessus du hasard, mais de peu. Les indices FWI aident davantage ici que la météo seule. L'indice officiel utilisé seul ne fait presque pas mieux que le hasard sur ces quatre étés.</p>
+  </div>
+  <div class="wide">
+    <figure class="fig"><img src="figures/09b_generalisation_temporelle.png" alt="Précision moyenne sur 2022-2025" loading="lazy"></figure>
+    <figure class="fig"><img src="figures/10_matrices_confusion.png" alt="Matrices de confusion de chaque modèle" loading="lazy">
+      <figcaption>Au seuil 0,5, les modèles qui pondèrent les classes détectent la majorité des feux mais au prix de nombreuses fausses alertes ; le k-NN, qui ne peut pas pondérer, ne déclenche jamais d'alerte (il ne voit jamais assez de voisins « feu »). Le choix du seuil dépend de ce que coûte une alerte.</figcaption></figure>
+  </div>
+</section>
+
+<section id="conclusion">
+  <div class="wrap">
+    <h2>Ce qu'il faut retenir</h2>
+    <div class="verdict">
+      <div><div class="if">Meilleur modèle</div><div><div class="pick">{{BEST_ALL}}</div><p class="small">{{BEST_NOTE}}</p></div></div>
+      <div><div class="if">Meilleur rapport simplicité / score</div><div><div class="pick">Régression logistique</div><p class="small">Proche des meilleurs, entraînée en quelques secondes, et ses coefficients s'expliquent.</p></div></div>
+    </div>
+    <p style="margin-top:24px">Sur des données réelles et bruitées, aucun algorithme ne fait de miracle : les écarts entre familles sont petits, et la façon d'évaluer (plis groupés par année) compte autant que le choix du modèle. Le machine learning améliore un peu l'indice officiel et peut aider à <strong>prioriser les journées et les zones à surveiller</strong>, pas à prédire chaque feu.</p>
+    <h3>Limites</h3>
+    <ul class="plain">
+      <li>Le satellite ne voit pas les petits feux, et un feu détecté peut être un brûlage agricole proche de la forêt.</li>
+      <li>La météo vient d'une réanalyse (maille d'environ 25 km), pas d'une station au cœur de la forêt ; le vent et l'humidité de midi sont approchés par les valeurs extrêmes du jour.</li>
+      <li>Les causes humaines des départs de feu (la vraie « étincelle ») ne sont pas dans les données.</li>
+    </ul>
+    <h3>Pistes</h3>
+    <ul class="plain">
+      <li>Ajouter la végétation (indice NDVI), la population et les routes, pour approcher le risque d'ignition.</li>
+      <li>Prédire à J+1 avec les prévisions météo, et ajuster le seuil d'alerte selon le coût d'une fausse alerte.</li>
+      <li>Ajouter d'autres satellites (VIIRS NOAA-20, MODIS) pour mieux couvrir les petits feux.</li>
+    </ul>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="links">
+      <a data-repo="" data-local="../README.md" href="../README.md">Code source sur GitHub</a>
+      <a data-repo="/blob/main/notebooks/analyse.ipynb" data-local="../notebooks/analyse.ipynb" href="../notebooks/analyse.ipynb">Notebook d'analyse</a>
+      <a data-repo="/tree/main/reports/results" data-local="../reports/results/" href="../reports/results/">Résultats bruts</a>
+    </div>
+    <p>Maram Bougossa, ESGITECH. Projet « Comparaison de modèles de Machine Learning ».</p>
+    <p>Données : NASA FIRMS (VIIRS S-NPP 375 m) et Open-Meteo / ERA5 (Copernicus). Réalisé avec Python et scikit-learn.</p>
+  </div>
+</footer>
+
+<script>
+const CAL = __DAYS__;     /* {zones:[...], years:[...], rows:[[zone, year, dayOfSeason, T, RH, Ws, Rain, FWI, detections], ...]} */
+const RESULTS = __RESULTS__;
+
+/* ---------- GitHub links: derived from the GitHub Pages address (user.github.io/repo) ---------- */
+(function () {
+  const m = location.hostname.match(/^([^.]+)\.github\.io$/);
+  const repoName = location.pathname.split("/").filter(Boolean)[0];
+  /* Online (GitHub Pages): link to the repository. Opened from the computer: link to the local files,
+     except the GitHub link itself, which uses the repository address given to make_site.py. */
+  const online = location.protocol.startsWith("http");
+  const repo = m && repoName ? `https://github.com/${m[1]}/${repoName}` : __REPO_FALLBACK__;
+  document.querySelectorAll("a[data-repo]").forEach(a => {
+    a.href = online || a.dataset.repo === "" ? repo + a.dataset.repo : a.dataset.local;
+  });
+})();
+
+/* ---------- theme toggle ---------- */
+(function () {
+  const root = document.documentElement;
+  let saved = null;
+  try { saved = localStorage.getItem("theme"); } catch (e) {}
+  if (saved) root.dataset.theme = saved;
+  document.getElementById("theme").addEventListener("click", () => {
+    const dark = root.dataset.theme ? root.dataset.theme === "dark"
+      : matchMedia("(prefers-color-scheme: dark)").matches;
+    root.dataset.theme = dark ? "light" : "dark";
+    try { localStorage.setItem("theme", root.dataset.theme); } catch (e) {}
+  });
+})();
+
+/* ---------- calendar ---------- */
+const readout = document.getElementById("readout");
+const rowsBox = document.getElementById("cal-rows");
+const fmt = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+const byYear = {};
+CAL.rows.forEach(r => { (byYear[r[1]] ||= []).push(r); });
+function dateOf(year, d) { const t = new Date(Date.UTC(year, 5, 1 + d)); return t; }
+function describe(r) {
+  const [z, y, d, T, RH, Ws, Rain, FWI, n] = r;
+  readout.className = "readout " + (n ? "f" : "n");
+  const date = fmt.format(dateOf(y, d));
+  readout.innerHTML = `<b>${CAL.zones[z]}, ${date} — ${n ? (n > 1 ? n + " détections de feu" : "1 détection de feu") : "aucun feu détecté"}.</b> ` +
+    `${T} °C, humidité ${RH} %, vent ${Ws} km/h, pluie ${Rain} mm, indice FWI ${FWI}`;
+}
+function drawYear(year) {
+  document.getElementById("cal-year").textContent = year;
+  document.querySelectorAll("#years button").forEach(b => b.setAttribute("aria-pressed", +b.dataset.y === year));
+  rowsBox.innerHTML = "";
+  CAL.zones.forEach((zone, zi) => {
+    const row = document.createElement("div");
+    row.className = "cal-row";
+    const fires = byYear[year].filter(r => r[0] === zi && r[8] > 0).length;
+    row.innerHTML = `<div class="lab">${zone}<span>${CAL.governorates[zi]} · ${fires} j. de feu</span></div><div class="days"></div>`;
+    const box = row.querySelector(".days");
+    byYear[year].filter(r => r[0] === zi).sort((a, b) => a[2] - b[2]).forEach(r => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "day" + (r[8] ? " f" : "");
+      b.setAttribute("aria-label", `${zone}, ${fmt.format(dateOf(r[1], r[2]))} : ${r[8] ? "feu" : "pas de feu"}`);
+      b.addEventListener("mouseenter", () => describe(r));
+      b.addEventListener("focus", () => describe(r));
+      b.addEventListener("click", () => describe(r));
+      box.appendChild(b);
+    });
+    rowsBox.appendChild(row);
+  });
+}
+const yearsBox = document.getElementById("years");
+CAL.years.forEach(y => {
+  const b = document.createElement("button");
+  b.type = "button"; b.dataset.y = y; b.textContent = y;
+  b.addEventListener("click", () => drawYear(y));
+  yearsBox.appendChild(b);
+});
+drawYear(__DEFAULT_YEAR__);
+
+/* ---------- results switch ---------- */
+const NOTES = {
+  "meteo+FWI": "La météo du jour plus les six indices FWI, qui résument la sécheresse accumulée. L'indice FWI officiel utilisé seul sert de référence.",
+  "meteo seule": "Seulement la température, l'humidité, le vent et la pluie du jour. Tous les modèles perdent en précision : la sécheresse accumulée compte."
+};
+const FIGS = { "meteo seule": "figures/05b_comparaison_modeles_meteo_seule.png", "meteo+FWI": "figures/05_comparaison_modeles.png" };
+const num = (x, d = 3) => x.toFixed(d).replace(".", ",");
+function render(fs) {
+  document.querySelectorAll(".switch button").forEach(b => b.setAttribute("aria-pressed", b.dataset.fs === fs));
+  document.getElementById("scenario-note").textContent = NOTES[fs];
+  document.getElementById("res-fig").src = FIGS[fs];
+  const rows = RESULTS.rows.filter(r => r.features === fs || (fs === "meteo+FWI" && r.features === "FWI seul"))
+    .sort((a, b) => b.ap - a.ap);
+  const base = rows.find(r => r.ref === "baseline").ap;
+  const pos = v => Math.max(0, Math.min(100, v / 0.3 * 100));
+  const tb = document.querySelector("#res-table tbody");
+  tb.innerHTML = rows.map(r => {
+    let gap = "";
+    if (r.best) gap = `<span class="tag">meilleur</span>`;
+    else if (r.p !== null) gap = r.p > 0.05
+      ? `<span class="tag">égalité, p = ${num(r.p, 2)}</span>`
+      : `<span class="tag sig">−${num(r.delta, 3)}, significatif</span>`;
+    return `<tr class="${r.ref ? "ref" : ""}">
+      <td class="model">${r.model}<span>${r.family}</span></td>
+      <td class="num"><div style="display:flex;align-items:center;gap:10px">
+        <div class="bar" style="flex:1"><i style="width:${pos(r.ap)}%"></i><s style="left:${pos(base)}%"></s></div>
+        <span>${num(r.ap)} ± ${num(r.std)}</span></div></td>
+      <td class="num hide-sm">${num(r.roc)}</td>
+      <td class="num hide-sm">${num(r.rec)}</td>
+      <td>${gap}</td></tr>`;
+  }).join("");
+}
+document.querySelectorAll(".switch button").forEach(b => b.addEventListener("click", () => render(b.dataset.fs)));
+render("meteo+FWI");
+</script>
+</body>
+</html>

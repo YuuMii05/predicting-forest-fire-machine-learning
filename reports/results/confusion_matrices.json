@@ -1,0 +1,142 @@
+{
+ "meteo+FWI|Baseline (au hasard)": [
+  [
+   9942,
+   0
+  ],
+  [
+   1160,
+   0
+  ]
+ ],
+ "meteo+FWI|Régression logistique": [
+  [
+   5979,
+   3963
+  ],
+  [
+   397,
+   763
+  ]
+ ],
+ "meteo+FWI|k-NN": [
+  [
+   9942,
+   0
+  ],
+  [
+   1160,
+   0
+  ]
+ ],
+ "meteo+FWI|Arbre de décision": [
+  [
+   5874,
+   4068
+  ],
+  [
+   443,
+   717
+  ]
+ ],
+ "meteo+FWI|Random Forest": [
+  [
+   6996,
+   2946
+  ],
+  [
+   497,
+   663
+  ]
+ ],
+ "meteo+FWI|Gradient Boosting": [
+  [
+   6053,
+   3889
+  ],
+  [
+   364,
+   796
+  ]
+ ],
+ "meteo+FWI|SVM (noyau RBF)": [
+  [
+   6093,
+   3849
+  ],
+  [
+   393,
+   767
+  ]
+ ],
+ "meteo seule|Baseline (au hasard)": [
+  [
+   9942,
+   0
+  ],
+  [
+   1160,
+   0
+  ]
+ ],
+ "meteo seule|Régression logistique": [
+  [
+   5672,
+   4270
+  ],
+  [
+   464,
+   696
+  ]
+ ],
+ "meteo seule|k-NN": [
+  [
+   9942,
+   0
+  ],
+  [
+   1160,
+   0
+  ]
+ ],
+ "meteo seule|Arbre de décision": [
+  [
+   5436,
+   4506
+  ],
+  [
+   478,
+   682
+  ]
+ ],
+ "meteo seule|Random Forest": [
+  [
+   5976,
+   3966
+  ],
+  [
+   523,
+   637
+  ]
+ ],
+ "meteo seule|Gradient Boosting": [
+  [
+   5781,
+   4161
+  ],
+  [
+   501,
+   659
+  ]
+ ],
+ "meteo seule|SVM (noyau RBF)": [
+  [
+   5390,
+   4552
+  ],
+  [
+   453,
+   707
+  ]
+ ]
+}

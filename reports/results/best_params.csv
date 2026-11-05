@@ -1,0 +1,16 @@
+features,model,best_params
+FWI seul,Indice FWI officiel seul,-
+meteo seule,Arbre de décision,"{'max_depth': 3, 'min_samples_leaf': 50}"
+meteo seule,Baseline (au hasard),-
+meteo seule,Gradient Boosting,"{'learning_rate': 0.03, 'max_depth': 3}"
+meteo seule,Random Forest,"{'max_depth': 6, 'min_samples_leaf': 20}"
+meteo seule,Régression logistique,{'C': 0.01}
+meteo seule,SVM (noyau RBF),"{'C': 1, 'gamma': 'scale'}"
+meteo seule,k-NN,"{'n_neighbors': 101, 'weights': 'uniform'}"
+meteo+FWI,Arbre de décision,"{'max_depth': 5, 'min_samples_leaf': 50}"
+meteo+FWI,Baseline (au hasard),-
+meteo+FWI,Gradient Boosting,"{'learning_rate': 0.03, 'max_depth': 3}"
+meteo+FWI,Random Forest,"{'max_depth': 6, 'min_samples_leaf': 5}"
+meteo+FWI,Régression logistique,{'C': 0.01}
+meteo+FWI,SVM (noyau RBF),"{'C': 1, 'gamma': 'scale'}"
+meteo+FWI,k-NN,"{'n_neighbors': 101, 'weights': 'distance'}"
